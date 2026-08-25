@@ -2,82 +2,50 @@ import {
   createContext,
   useCallback,
   useContext,
-  useEffect,
   useMemo,
   useState,
   type ReactNode,
 } from "react";
 
-import { fetchMe, login as loginRequest, logout as clearSession } from "../api/auth";
-import { getToken } from "../api/axiosInstance";
+import { DEMO_ADMIN } from "../mock/data";
 import type { AdminUser } from "../types";
 
 interface AuthState {
   user: AdminUser | null;
-  /** True until the stored token has been checked — routes wait on this. */
+  /** Kept so pages can render their "checking session" state. Always false here. */
   loading: boolean;
-  login: (email: string, password: string) => Promise<void>;
-  logout: () => void;
-  /** Re-reads the signed-in account, after a profile edit for instance. */
-  refresh: () => Promise<void>;
+  /** Accepts anything — there is no backend to check against. */
+  signIn: () => void;
+  signOut: () => void;
+  /** Applies a profile edit locally, so the topbar and avatar update. */
+  updateUser: (changes: Partial<AdminUser>) => void;
 }
 
 const AuthContext = createContext<AuthState | null>(null);
 
+/**
+ * Design-mode session.
+ *
+ * The dashboard starts signed in as the demo admin so every screen is one
+ * click away — no credentials, no token, no network. Sign out to see the
+ * login design; signing back in accepts any input.
+ *
+ * When a real backend arrives, this is the only file that changes: restore a
+ * token check on boot, and point `signIn` at your login endpoint.
+ */
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<AdminUser | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [user, setUser] = useState<AdminUser | null>(DEMO_ADMIN);
 
-  /*
-   * A token in localStorage is not proof of a valid session — it may be
-   * expired or revoked. Verify it against /me once on boot so a stale token
-   * never renders the shell and then fails on every request inside it.
-   */
-  useEffect(() => {
-    let cancelled = false;
+  const signIn = useCallback(() => setUser(DEMO_ADMIN), []);
+  const signOut = useCallback(() => setUser(null), []);
 
-    if (!getToken()) {
-      setLoading(false);
-      return;
-    }
-
-    fetchMe()
-      .then((me) => {
-        if (!cancelled) setUser(me.role === "admin" ? me : null);
-      })
-      .catch(() => {
-        if (!cancelled) setUser(null);
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  const login = useCallback(async (email: string, password: string) => {
-    setUser(await loginRequest(email, password));
-  }, []);
-
-  const logout = useCallback(() => {
-    clearSession();
-    setUser(null);
-  }, []);
-
-  const refresh = useCallback(async () => {
-    try {
-      setUser(await fetchMe());
-    } catch {
-      // The interceptor already handles an expired token; a failed refresh
-      // should not blank the UI mid-edit.
-    }
+  const updateUser = useCallback((changes: Partial<AdminUser>) => {
+    setUser((current) => (current ? { ...current, ...changes } : current));
   }, []);
 
   const value = useMemo(
-    () => ({ user, loading, login, logout, refresh }),
-    [user, loading, login, logout, refresh],
+    () => ({ user, loading: false, signIn, signOut, updateUser }),
+    [user, signIn, signOut, updateUser],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

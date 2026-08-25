@@ -1,17 +1,23 @@
 import { useCallback, useEffect, useState } from "react";
 import { useSearchParams } from "react-router";
-import { AlertTriangle, Ban, CheckCircle2, Search, Users as UsersIcon } from "lucide-react";
+import { Ban, CheckCircle2, Search, Users as UsersIcon } from "lucide-react";
 
-import { fetchUsers, setUserBlocked } from "../../api/users";
-import { apiErrorMessage } from "../../api/axiosInstance";
 import { useAuth } from "../../auth/AuthContext";
 import { useToast } from "../../components/Toast";
 import EmptyState from "../../components/EmptyState";
 import Pagination from "../../components/Pagination";
 import ConfirmDialog from "../../components/ConfirmDialog";
 import { formatDate } from "../../utils/format";
+import { loadUsers } from "../../mock/data";
 import type { Pagination as PaginationMeta, PlatformUser } from "../../types";
 
+/**
+ * Reference layout for a list page: a filter bar whose state lives in the URL,
+ * a skeleton, an empty state, rows, and a paginator.
+ *
+ * Search, role filter and paging all run against the mock data in
+ * `src/mock/data.ts`, so every control on the page is live.
+ */
 export default function Users() {
   const [params, setParams] = useSearchParams();
   const { user: me } = useAuth();
@@ -25,7 +31,6 @@ export default function Users() {
   const [users, setUsers] = useState<PlatformUser[]>([]);
   const [meta, setMeta] = useState<PaginationMeta | undefined>();
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
 
   const [pending, setPending] = useState<PlatformUser | null>(null);
   const [working, setWorking] = useState(false);
@@ -41,43 +46,43 @@ export default function Users() {
     [params, setParams],
   );
 
+  // Debounced search — typing should not filter on every keystroke.
   useEffect(() => {
     if (searchInput === search) return;
     const timer = setTimeout(() => setParam("search", searchInput.trim()), 350);
     return () => clearTimeout(timer);
   }, [searchInput, search, setParam]);
 
-  const load = useCallback(() => {
+  useEffect(() => {
+    let cancelled = false;
     setLoading(true);
-    setError(null);
-    return fetchUsers({ page, limit: 10, search, role })
-      .then((result) => {
-        setUsers(result.users);
-        setMeta(result.pagination);
-      })
-      .catch((err) => setError(apiErrorMessage(err, "Could not load users.")))
-      .finally(() => setLoading(false));
+
+    loadUsers({ page, search, role }).then((result) => {
+      if (cancelled) return;
+      setUsers(result.users);
+      setMeta(result.pagination);
+      setLoading(false);
+    });
+
+    return () => {
+      cancelled = true;
+    };
   }, [page, search, role]);
 
-  useEffect(() => {
-    load();
-  }, [load]);
-
-  const onConfirmBlock = async () => {
+  /** Design mode: flips the row locally and shows the toast treatment. */
+  const onConfirmBlock = () => {
     if (!pending) return;
     setWorking(true);
-    try {
-      await setUserBlocked(pending._id, !pending.isBlocked);
-      toast.success(
-        `${pending.name} ${pending.isBlocked ? "unblocked" : "blocked"}.`,
+    setTimeout(() => {
+      setUsers((current) =>
+        current.map((user) =>
+          user._id === pending._id ? { ...user, isBlocked: !user.isBlocked } : user,
+        ),
       );
+      toast.success(`${pending.name} ${pending.isBlocked ? "unblocked" : "blocked"}.`);
       setPending(null);
-      await load();
-    } catch (err) {
-      toast.error(apiErrorMessage(err, "Could not update the user."));
-    } finally {
       setWorking(false);
-    }
+    }, 400);
   };
 
   const selectClass =
@@ -134,8 +139,6 @@ export default function Users() {
             <div key={i} className="skeleton h-[72px] rounded-xl" />
           ))}
         </div>
-      ) : error ? (
-        <EmptyState icon={AlertTriangle} title="Could not load users" message={error} />
       ) : users.length === 0 ? (
         <EmptyState
           icon={UsersIcon}
@@ -183,21 +186,14 @@ export default function Users() {
                   </div>
 
                   <div className="flex items-center gap-2 flex-shrink-0">
-                    {user.isVerified ? (
-                      <span
-                        title="Verified"
-                        className="text-emerald-400/70 flex items-center"
-                      >
-                        <CheckCircle2 size={15} />
-                      </span>
-                    ) : (
-                      <span
-                        title="Not verified"
-                        className="text-white/20 flex items-center"
-                      >
-                        <CheckCircle2 size={15} />
-                      </span>
-                    )}
+                    <span
+                      title={user.isVerified ? "Verified" : "Not verified"}
+                      className={`flex items-center ${
+                        user.isVerified ? "text-emerald-400/70" : "text-white/20"
+                      }`}
+                    >
+                      <CheckCircle2 size={15} />
+                    </span>
 
                     {/* Blocking yourself would lock you out of the dashboard. */}
                     <button

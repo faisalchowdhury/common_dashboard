@@ -10,7 +10,7 @@ export default function Topbar({
   title: string;
   onMenuClick: () => void;
 }) {
-  const { user, logout } = useAuth();
+  const { user, signOut } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -85,7 +85,7 @@ export default function Topbar({
             <button
               type="button"
               role="menuitem"
-              onClick={logout}
+              onClick={signOut}
               className="w-full flex items-center gap-2.5 px-4 py-3 text-sm text-white/65 hover:text-luxury-gold hover:bg-white/[0.04] transition-colors focus-gold"
             >
               <LogOut size={15} />

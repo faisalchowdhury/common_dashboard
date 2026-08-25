@@ -2,8 +2,8 @@
 @import "tailwindcss";
 
 /*
- * Same tokens as the marketing site (src/index.css) so the two read as one
- * product. Keep them in step if the brand palette changes.
+ * Design tokens for the whole dashboard. Retheme a project by editing the
+ * colours here — every component references these, none hard-code a hex.
  */
 @theme {
   --font-serif: "Cormorant Garamond", serif;
@@ -119,7 +119,7 @@
 }
 
 /*
- * Settings preview. Renders admin-authored HTML on a light surface so it
+ * Rich-text preview. Renders admin-authored HTML on a light surface so it
  * reads the way a visitor will see it, rather than inheriting the dark shell.
  */
 .settings-preview h1,

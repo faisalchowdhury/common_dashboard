@@ -3,13 +3,16 @@ import { Navigate, Outlet, useLocation } from "react-router";
 import { useAuth } from "./AuthContext";
 import FullPageLoader from "../components/FullPageLoader";
 
-/** Gate for everything inside the dashboard shell. */
+/**
+ * Gate for everything inside the dashboard shell.
+ *
+ * In design mode the session starts signed in, so this passes straight
+ * through — it is kept as the seam for a real auth check later.
+ */
 export default function ProtectedRoute() {
   const { user, loading } = useAuth();
   const location = useLocation();
 
-  // Wait for the boot-time token check — redirecting first would bounce a
-  // signed-in admin to the login screen on every refresh.
   if (loading) return <FullPageLoader label="Checking your session…" />;
 
   if (!user) {

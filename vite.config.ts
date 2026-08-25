@@ -5,8 +5,9 @@ import tailwindcss from "@tailwindcss/vite";
 export default defineConfig({
   plugins: [react(), tailwindcss()],
   server: {
-    // 4004 is the marketing site; the dashboard sits alongside it.
-    port: 4010,
+    port: 5173,
+    // `host: true` exposes the dev server on the LAN; add your own tunnel
+    // hostname to `allowedHosts` if you serve it through one.
     host: true,
     cors: true,
   },

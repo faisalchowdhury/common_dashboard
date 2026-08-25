@@ -1,15 +1,17 @@
 import { useEffect, useState } from "react";
-import { Outlet, useLocation, useMatch } from "react-router";
+import { Outlet, useLocation } from "react-router";
 
 import Sidebar, { NAV_ITEMS } from "./Sidebar";
 import Topbar from "./Topbar";
 
-/** Page title for the topbar, derived from the route. */
+/**
+ * Page title for the topbar, derived from the route.
+ *
+ * The longest matching nav path wins, so a detail route such as
+ * `/users/:id` still titles itself "Users" without needing its own entry.
+ */
 function usePageTitle(): string {
   const { pathname } = useLocation();
-  const isQuoteDetail = useMatch("/quotes/:id");
-
-  if (isQuoteDetail) return "Quote Detail";
 
   const match = [...NAV_ITEMS]
     .sort((a, b) => b.path.length - a.path.length)

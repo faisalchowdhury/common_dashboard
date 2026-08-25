@@ -1,17 +1,21 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { KeyRound, Loader2, Save, Upload, UserCog } from "lucide-react";
 
-import { changePassword, updateProfile } from "../../api/account";
-import { apiErrorMessage } from "../../api/axiosInstance";
 import { useAuth } from "../../auth/AuthContext";
 import { useToast } from "../../components/Toast";
 import Field, { Label, inputClass } from "../../components/Field";
 
 const MIN_PASSWORD_LENGTH = 8;
-const API_BASE = import.meta.env.VITE_BACKEND_BASE ?? "http://localhost:8080";
 
+/**
+ * Profile and password forms.
+ *
+ * Design mode: saving the profile updates the session in memory — so the
+ * topbar name and avatar change as you type — and the password form only
+ * exercises its own validation. Nothing leaves the browser.
+ */
 export default function Account() {
-  const { user, refresh } = useAuth();
+  const { user, updateUser } = useAuth();
   const toast = useToast();
   const fileInput = useRef<HTMLInputElement>(null);
 
@@ -47,7 +51,7 @@ export default function Account() {
     return () => URL.revokeObjectURL(url);
   }, [avatar]);
 
-  const onSaveProfile = async (event: FormEvent) => {
+  const onSaveProfile = (event: FormEvent) => {
     event.preventDefault();
     if (!name.trim()) {
       toast.error("Your name cannot be empty.");
@@ -55,30 +59,25 @@ export default function Account() {
     }
 
     setSavingProfile(true);
-    try {
-      await updateProfile({
+    setTimeout(() => {
+      updateUser({
         name: name.trim(),
         email: email.trim(),
         phone: phone.trim(),
         address: address.trim(),
-        profilePicture: avatar,
       });
-      setAvatar(null);
-      if (fileInput.current) fileInput.current.value = "";
-      await refresh();
       toast.success("Profile updated.");
-    } catch (err) {
-      toast.error(apiErrorMessage(err, "Could not update your profile."));
-    } finally {
       setSavingProfile(false);
-    }
+    }, 500);
   };
 
-  const onChangePassword = async (event: FormEvent) => {
+  const onChangePassword = (event: FormEvent) => {
     event.preventDefault();
 
     if (newPassword.length < MIN_PASSWORD_LENGTH) {
-      toast.error(`New password must be at least ${MIN_PASSWORD_LENGTH} characters.`);
+      toast.error(
+        `New password must be at least ${MIN_PASSWORD_LENGTH} characters.`,
+      );
       return;
     }
     if (newPassword !== confirmPassword) {
@@ -91,23 +90,14 @@ export default function Account() {
     }
 
     setSavingPassword(true);
-    try {
-      await changePassword(oldPassword, newPassword);
+    setTimeout(() => {
       setOldPassword("");
       setNewPassword("");
       setConfirmPassword("");
       toast.success("Password changed.");
-    } catch (err) {
-      toast.error(apiErrorMessage(err, "Could not change your password."));
-    } finally {
       setSavingPassword(false);
-    }
+    }, 500);
   };
-
-  const storedAvatar = user?.profilePicture
-    ? `${API_BASE.replace(/\/$/, "")}${user.profilePicture}`
-    : null;
-  const shownAvatar = avatarPreview ?? storedAvatar;
 
   const initials = (user?.name ?? "?")
     .split(/\s+/)
@@ -125,22 +115,19 @@ export default function Account() {
             <UserCog size={17} />
           </div>
           <div>
-            <h2 className="font-serif text-lg font-bold leading-tight">Your profile</h2>
-            <p className="text-[11px] text-white/35">Name, contact details and avatar.</p>
+            <h2 className="font-serif text-lg font-bold leading-tight">
+              Your profile
+            </h2>
+            <p className="text-[11px] text-white/35">
+              Name, contact details and avatar.
+            </p>
           </div>
         </div>
 
         <div className="flex items-center gap-4 mb-6">
           <div className="w-16 h-16 rounded-full overflow-hidden bg-luxury-charcoal ring-1 ring-luxury-gold/25 flex items-center justify-center flex-shrink-0">
-            {shownAvatar ? (
-              <img
-                src={shownAvatar}
-                alt=""
-                className="w-full h-full object-cover"
-                onError={(e) => {
-                  e.currentTarget.style.display = "none";
-                }}
-              />
+            {avatarPreview ? (
+              <img src={avatarPreview} alt="" className="w-full h-full object-cover" />
             ) : (
               <span className="font-serif text-lg font-bold text-luxury-gold/40">
                 {initials || "?"}

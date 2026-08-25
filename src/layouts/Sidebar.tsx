@@ -1,13 +1,14 @@
 import { NavLink } from "react-router";
 import {
   LayoutDashboard,
-  FileText,
   Users,
   FileCog,
   UserCog,
   X,
   type LucideIcon,
 } from "lucide-react";
+
+import { APP_COPYRIGHT, APP_NAME, APP_TAGLINE } from "../config/app";
 
 export interface NavItem {
   label: string;
@@ -18,9 +19,15 @@ export interface NavItem {
   groupStart?: boolean;
 }
 
+/**
+ * The dashboard's navigation, and the source of the topbar's page title.
+ *
+ * Add a project's own sections here alongside a route in `src/router/router.tsx`.
+ * `end` marks an exact-match route (only "/" needs it); `groupStart` draws a
+ * divider above the item.
+ */
 export const NAV_ITEMS: NavItem[] = [
   { label: "Overview", path: "/", icon: LayoutDashboard, end: true },
-  { label: "Quotes", path: "/quotes", icon: FileText },
   { label: "Users", path: "/users", icon: Users },
   { label: "Site Pages", path: "/settings", icon: FileCog, groupStart: true },
   { label: "My Account", path: "/account", icon: UserCog },
@@ -51,11 +58,11 @@ export default function Sidebar({
       >
         <div className="h-[var(--topbar-h)] flex items-center justify-between px-6 border-b border-white/5 flex-shrink-0">
           <div className="flex flex-col">
-            <span className="font-serif text-xl font-bold tracking-widest text-luxury-ivory leading-none">
-              BACCHUS
+            <span className="font-serif text-xl font-bold tracking-widest text-luxury-ivory leading-none uppercase">
+              {APP_NAME}
             </span>
             <span className="text-[8px] tracking-[0.3em] text-luxury-gold font-sans font-semibold uppercase mt-1">
-              Admin
+              {APP_TAGLINE}
             </span>
           </div>
           <button
@@ -92,7 +99,7 @@ export default function Sidebar({
 
         <div className="px-6 py-5 border-t border-white/5 flex-shrink-0">
           <p className="text-[10px] text-white/25 tracking-[0.15em] uppercase font-medium">
-            © {new Date().getFullYear()} Bacchus Beverages
+            © {new Date().getFullYear()} {APP_COPYRIGHT}
           </p>
         </div>
       </aside>

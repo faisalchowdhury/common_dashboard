@@ -1,40 +1,34 @@
 import { useState, type FormEvent } from "react";
-import { Navigate, useLocation, useSearchParams } from "react-router";
-import { AlertTriangle, Loader2, Lock, Mail } from "lucide-react";
+import { Navigate, useLocation } from "react-router";
+import { Loader2, Lock, Mail } from "lucide-react";
 
 import { useAuth } from "../../auth/AuthContext";
-import { apiErrorMessage } from "../../api/axiosInstance";
-import FullPageLoader from "../../components/FullPageLoader";
+import { APP_NAME, APP_TAGLINE } from "../../config/app";
 
+/**
+ * The sign-in screen.
+ *
+ * Design mode: nothing is validated and nothing is sent anywhere — submitting
+ * the form signs you straight in. The submitting state is still exercised so
+ * the button's loading treatment is visible.
+ */
 export default function Login() {
-  const { user, loading, login } = useAuth();
+  const { user, signIn } = useAuth();
   const location = useLocation();
-  const [params] = useSearchParams();
 
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [error, setError] = useState<string | null>(
-    params.get("expired") ? "Your session expired. Please sign in again." : null,
-  );
+  const [email, setEmail] = useState("alex@example.com");
+  const [password, setPassword] = useState("password");
   const [submitting, setSubmitting] = useState(false);
-
-  if (loading) return <FullPageLoader label="Checking your session…" />;
 
   if (user) {
     const from = (location.state as { from?: string } | null)?.from;
     return <Navigate to={from && from !== "/login" ? from : "/"} replace />;
   }
 
-  const onSubmit = async (event: FormEvent) => {
+  const onSubmit = (event: FormEvent) => {
     event.preventDefault();
-    setError(null);
     setSubmitting(true);
-    try {
-      await login(email.trim(), password);
-    } catch (err) {
-      setError(apiErrorMessage(err, "Could not sign in."));
-      setSubmitting(false);
-    }
+    setTimeout(signIn, 600);
   };
 
   const inputClass =
@@ -46,11 +40,11 @@ export default function Login() {
 
       <div className="w-full max-w-sm relative z-10">
         <div className="text-center mb-9">
-          <span className="font-serif text-3xl font-bold tracking-widest text-luxury-ivory block">
-            BACCHUS
+          <span className="font-serif text-3xl font-bold tracking-widest text-luxury-ivory block uppercase">
+            {APP_NAME}
           </span>
           <span className="text-[9px] tracking-[0.35em] text-luxury-gold font-semibold uppercase">
-            Admin Dashboard
+            {APP_TAGLINE}
           </span>
         </div>
 
@@ -59,16 +53,6 @@ export default function Login() {
           <p className="text-xs text-white/40 font-light mb-7">
             Administrator accounts only.
           </p>
-
-          {error && (
-            <div
-              role="alert"
-              className="flex items-start gap-2.5 rounded-xl border border-amber-500/25 bg-amber-500/[0.07] p-3.5 mb-5"
-            >
-              <AlertTriangle size={14} className="text-amber-400 mt-0.5 flex-shrink-0" />
-              <p className="text-[11px] text-white/70 leading-relaxed">{error}</p>
-            </div>
-          )}
 
           <div className="space-y-4">
             <div>
@@ -87,7 +71,6 @@ export default function Login() {
                   id="email"
                   type="email"
                   autoComplete="username"
-                  required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="admin@example.com"
@@ -112,7 +95,6 @@ export default function Login() {
                   id="password"
                   type="password"
                   autoComplete="current-password"
-                  required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••"
@@ -135,6 +117,10 @@ export default function Login() {
               "Sign in"
             )}
           </button>
+
+          <p className="text-[10px] text-white/25 text-center mt-5 leading-relaxed">
+            Design preview — any credentials will do.
+          </p>
         </form>
       </div>
     </div>

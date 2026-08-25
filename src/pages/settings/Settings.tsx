@@ -1,16 +1,35 @@
 import { useEffect, useState } from "react";
 import { Eye, Loader2, Pencil, Save } from "lucide-react";
 
-import {
-  SETTINGS_PAGES,
-  fetchSettingsPage,
-  updateSettingsPage,
-} from "../../api/settings";
-import { apiErrorMessage } from "../../api/axiosInstance";
 import { useToast } from "../../components/Toast";
+import { loadContentPage } from "../../mock/data";
 import type { SettingsPageKey } from "../../types";
 
 type Mode = "write" | "preview";
+
+/**
+ * Editable long-form content pages, with a write / preview split.
+ *
+ * Design mode: edits live in component state and "Save" simply confirms —
+ * nothing is persisted, so a reload restores the sample copy.
+ */
+const PAGES: { key: SettingsPageKey; label: string; blurb: string }[] = [
+  {
+    key: "privacy",
+    label: "Privacy Policy",
+    blurb: "Shown on the public site's privacy page.",
+  },
+  {
+    key: "terms",
+    label: "Terms & Conditions",
+    blurb: "Shown on the public site's terms page.",
+  },
+  {
+    key: "about",
+    label: "About Us",
+    blurb: "Shown on the public site's about page.",
+  },
+];
 
 export default function Settings() {
   const toast = useToast();
@@ -19,12 +38,12 @@ export default function Settings() {
   const [mode, setMode] = useState<Mode>("write");
 
   const [draft, setDraft] = useState("");
-  /** What the server last confirmed, so we know when there is something to save. */
+  /** The last saved copy, so we know when there is something to save. */
   const [saved, setSaved] = useState("");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
-  const page = SETTINGS_PAGES.find((entry) => entry.key === active)!;
+  const page = PAGES.find((entry) => entry.key === active)!;
   const dirty = draft !== saved;
 
   useEffect(() => {
@@ -32,26 +51,19 @@ export default function Settings() {
     setLoading(true);
     setMode("write");
 
-    fetchSettingsPage(active)
-      .then((result) => {
-        if (cancelled) return;
-        const description = result?.description ?? "";
-        setDraft(description);
-        setSaved(description);
-      })
-      .catch((err) => {
-        if (!cancelled) toast.error(apiErrorMessage(err, "Could not load this page."));
-      })
-      .finally(() => !cancelled && setLoading(false));
+    loadContentPage(active).then((description) => {
+      if (cancelled) return;
+      setDraft(description);
+      setSaved(description);
+      setLoading(false);
+    });
 
     return () => {
       cancelled = true;
     };
-    // toast is stable; re-running on it would refetch on every render.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [active]);
 
-  // Warn before losing an unsaved edit to a tab switch or a closed tab.
+  // Warn before losing an unsaved edit to a closed tab.
   useEffect(() => {
     if (!dirty) return;
     const onBeforeUnload = (event: BeforeUnloadEvent) => event.preventDefault();
@@ -65,32 +77,25 @@ export default function Settings() {
     setActive(key);
   };
 
-  const onSave = async () => {
+  const onSave = () => {
     if (!draft.trim()) {
       toast.error("The page content cannot be empty.");
       return;
     }
 
     setSaving(true);
-    try {
-      const result = await updateSettingsPage(active, draft);
-      // Read back what the server stored — it sanitises HTML, so the saved
-      // text can differ from what was typed.
-      setSaved(result.description);
-      setDraft(result.description);
+    setTimeout(() => {
+      setSaved(draft);
       toast.success(`${page.label} updated.`);
-    } catch (err) {
-      toast.error(apiErrorMessage(err, "Could not save."));
-    } finally {
       setSaving(false);
-    }
+    }, 500);
   };
 
   return (
     <div className="space-y-5">
       {/* Page picker */}
       <div className="flex flex-wrap gap-2">
-        {SETTINGS_PAGES.map((entry) => (
+        {PAGES.map((entry) => (
           <button
             key={entry.key}
             type="button"
@@ -149,16 +154,16 @@ export default function Settings() {
               className="w-full h-[420px] bg-luxury-black border border-white/10 rounded-xl px-4 py-3.5 text-sm leading-relaxed font-mono placeholder-white/25 focus:border-luxury-gold outline-none transition-colors resize-y"
             />
             <p className="text-[11px] text-white/30 mt-2.5 leading-relaxed">
-              HTML is sanitised on the server before it is stored, so unsupported tags
-              are stripped on save. Switch to Preview to see the result.
+              Switch to Preview to see how the content will read on the public site.
             </p>
           </>
         ) : (
           <div className="rounded-xl border border-white/10 bg-white text-[#2e2a24] p-6 h-[420px] overflow-y-auto">
             {draft.trim() ? (
               /*
-               * The website renders this same block, and the server sanitises it
-               * on save — so previewing it as HTML shows what visitors get.
+               * Rendered on a light ground because that is where this copy
+               * ends up — previewing it on the dark shell would mislead.
+               * With a real backend, sanitise this HTML before storing it.
                */
               <div
                 className="settings-preview"
